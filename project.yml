@@ -31,6 +31,7 @@ targets:
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         AppGroupIdentifier: $(APP_GROUP_ID)
+        NSHealthShareUsageDescription: "Forme du jour lit tes données Santé (VFC, fréquence cardiaque, sommeil, séances) pour calculer ton score du matin. Rien ne quitte ton iPhone."
         NSHealthUpdateUsageDescription: "Forme du jour peut enregistrer l'effort ressenti que tu saisis pour une séance. Rien ne quitte ton iPhone."
     entitlements:
       path: App/Readiness.entitlements
