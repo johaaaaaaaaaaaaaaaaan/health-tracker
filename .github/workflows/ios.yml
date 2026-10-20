@@ -28,3 +28,19 @@ jobs:
         with:
           name: xcresult
           path: build/Tests.xcresult
+      - name: Build IPAs
+        run: |
+          bash scripts/build-ipa.sh App/Readiness.entitlements build/Readiness.ipa
+          bash scripts/build-ipa.sh scripts/entitlements-healthkit-only.plist build/Readiness-healthkit-only.ipa
+      - name: Guard rejects entitlements without HealthKit
+        run: |
+          plutil -create xml1 build/no-healthkit.plist
+          if bash scripts/build-ipa.sh build/no-healthkit.plist build/should-fail.ipa; then
+            echo "build-ipa.sh accepted entitlements without HealthKit" >&2; exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ipa
+          path: |
+            build/Readiness.ipa
+            build/Readiness-healthkit-only.ipa
