@@ -95,49 +95,64 @@ final class HealthKitProbe {
         } catch {
             return Self.failure("find workout", error)
         }
-        guard let workout = workouts.first(where: {
-            ProbeCounting.isWorkOutDoors(bundleID: $0.sourceRevision.source.bundleIdentifier,
-                                         name: $0.sourceRevision.source.name)
-        }) else { return .noWorkOutDoorsWorkout }
+        // Skip workouts that already have an effort, so the test never touches a workout the user rated.
+        var candidates: [ProbeWorkoutCandidate] = []
+        for workout in workouts {
+            let source = workout.sourceRevision.source
+            guard ProbeCounting.isWorkOutDoors(bundleID: source.bundleIdentifier, name: source.name) else { continue }
+            let hasEffort: Bool
+            do {
+                hasEffort = try await relatedEfforts(of: workout).isEmpty == false
+            } catch {
+                return Self.failure("check existing effort", error)
+            }
+            candidates.append(ProbeWorkoutCandidate(id: workout.uuid, bundleID: source.bundleIdentifier,
+                                                    name: source.name, hasEffort: hasEffort))
+            if !hasEffort { break }
+        }
+        guard let id = ProbeCounting.workoutForEffortTest(candidates),
+              let workout = workouts.first(where: { $0.uuid == id }) else { return .noWorkOutDoorsWorkout }
 
-        let effortType = HKQuantityType(.workoutEffortScore)
         let sample = HKQuantitySample(
-            type: effortType,
+            type: HKQuantityType(.workoutEffortScore),
             quantity: HKQuantity(unit: .appleEffortScore(), doubleValue: 5),
             start: workout.startDate, end: workout.endDate,
             metadata: ["FormeDuJourProbe": "1"])
 
+        let outcome: EffortWriteOutcome
         var path = "A"
+        var pathAError: Error?
         do {
-            try await store.relateWorkoutEffortSample(sample, with: workout, activity: nil)
-        } catch {
-            path = "B"
             do {
-                try await store.save(sample)
                 try await store.relateWorkoutEffortSample(sample, with: workout, activity: nil)
             } catch {
-                return Self.failure("relate (paths A and B)", error)
+                path = "B"
+                pathAError = error
+                try await store.save(sample)
+                try await store.relateWorkoutEffortSample(sample, with: workout, activity: nil)
             }
+            let readBack = try await relatedEfforts(of: workout).contains { $0.uuid == sample.uuid }
+            outcome = .success(path: path, readBack: readBack, deleted: false)
+        } catch {
+            let step = path == "A" ? "relate (A)" : "save/relate (B), A: \(pathAError.map(Self.describe) ?? "-")"
+            outcome = Self.failure(step, error)
         }
 
-        let readBack: Bool
-        do {
-            let related = try await HKSampleQueryDescriptor(
-                predicates: [.quantitySample(type: effortType,
-                                             predicate: HKQuery.predicateForWorkoutEffortSamplesRelated(workout: workout, activity: nil))],
-                sortDescriptors: []).result(for: store)
-            readBack = related.contains { $0.uuid == sample.uuid }
-        } catch {
-            return Self.failure("read back", error)
+        // Always clean up, on every path: delete only the instance created above, never by predicate,
+        // so the user's real RPEs stay untouched. Deleting a sample that was never saved fails harmlessly.
+        let deleted = (try? await store.delete(sample)) != nil
+        switch outcome {
+        case let .success(path, readBack, _): return .success(path: path, readBack: readBack, deleted: deleted)
+        case let .failed(step, code, message): return .failed(step: step, code: code, message: message + (deleted ? " · test sample deleted" : " · nothing to delete"))
+        case .noWorkOutDoorsWorkout: return outcome
         }
+    }
 
-        // Delete only the instance created above, never by predicate: the user's real RPEs must stay untouched.
-        do {
-            try await store.delete(sample)
-            return .success(path: path, readBack: readBack, deleted: true)
-        } catch {
-            return .success(path: path, readBack: readBack, deleted: false)
-        }
+    private func relatedEfforts(of workout: HKWorkout) async throws -> [HKQuantitySample] {
+        try await HKSampleQueryDescriptor(
+            predicates: [.quantitySample(type: HKQuantityType(.workoutEffortScore),
+                                         predicate: HKQuery.predicateForWorkoutEffortSamplesRelated(workout: workout, activity: nil))],
+            sortDescriptors: []).result(for: store)
     }
 
     private func count(_ type: HKSampleType, _ predicate: NSPredicate) async throws -> Int {

@@ -20,13 +20,21 @@ struct ProbeWorkoutCandidate {
 }
 
 enum ProbeCounting {
+    /// Most recent WorkOutDoors workout that has no effort yet, so the test never touches a workout the user rated.
+    /// `candidates` must be sorted most recent first.
     static func workoutForEffortTest(_ candidates: [ProbeWorkoutCandidate]) -> UUID? {
-        nil
+        candidates.first { isWorkOutDoors(bundleID: $0.bundleID, name: $0.name) && !$0.hasEffort }?.id
     }
 
-    /// Number of distinct local days (by sample end) that have at least one staged sleep sample.
+    /// Number of distinct nights with at least one staged sleep sample. A sample ending at or after 15:00 local
+    /// belongs to the next day's night (SPEC §8.2: the main sleep of day J ends in [J 03:00, J 15:00[).
     static func nightsWithStages(_ records: [ProbeSleepRecord], timeZone: TimeZone) -> Int {
-        Set(records.filter(\.hasStage).map { DayKey(date: $0.end, timeZone: timeZone) }).count
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        return Set(records.filter(\.hasStage).map { record in
+            let day = DayKey(date: record.end, timeZone: timeZone)
+            return calendar.component(.hour, from: record.end) >= 15 ? day.advanced(by: 1) : day
+        }).count
     }
 
     /// Workouts grouped by source bundle ID, sorted by count (descending) then name (ascending).

@@ -67,7 +67,7 @@ struct HealthKitProbeView: View {
     private static func text(for outcome: EffortWriteOutcome) -> String {
         switch outcome {
         case .noWorkOutDoorsWorkout:
-            "Aucune séance WorkOutDoors sur les 30 derniers jours."
+            "Aucune séance WorkOutDoors non notée sur les 30 derniers jours (une séance déjà notée n'est jamais touchée)."
         case let .success(path, readBack, deleted):
             "Écrit (chemin \(path)) · relu : \(readBack ? "oui" : "non") · supprimé : \(deleted ? "oui" : "non")"
         case let .failed(step, code, message):
