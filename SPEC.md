@@ -1028,6 +1028,7 @@ Les 30 s du check-in laissent aussi le temps à la montre de synchroniser la nui
 
 - **Windows (local) :**
   - Swift 6.4.1 (`winget install Swift.Toolchain`) et Visual Studio Build Tools.
+  - **Constat de l'étape 0 :** Smart App Control, activé sur ce PC, bloque les exécutables de test compilés localement (`C0E90002`). Les tests locaux du moteur passent donc par **WSL (Swift pour Linux)**. Les tests sous Windows natif sont assurés par la CI `Engine`.
   - Dans `Packages/ReadinessEngine` : `swift build`, `swift test`, `swift run readiness-cli --scenario <nom> --days 30`. La CLI affiche, jour par jour, les sous-scores, le score, les plafonds et la recommandation.
   - J'installe `gh` sur ce PC (winget) avec ton accord. L'authentification (`gh auth login`) et la création du compte GitHub restent à faire par toi.
 - **GitHub Actions** (dépôt public, créé par l'utilisateur ou avec son accord) :
