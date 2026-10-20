@@ -12,7 +12,18 @@ struct ProbeSourceCount: Equatable {
     let count: Int
 }
 
+struct ProbeWorkoutCandidate {
+    let id: UUID
+    let bundleID: String
+    let name: String
+    let hasEffort: Bool
+}
+
 enum ProbeCounting {
+    static func workoutForEffortTest(_ candidates: [ProbeWorkoutCandidate]) -> UUID? {
+        nil
+    }
+
     /// Number of distinct local days (by sample end) that have at least one staged sleep sample.
     static func nightsWithStages(_ records: [ProbeSleepRecord], timeZone: TimeZone) -> Int {
         Set(records.filter(\.hasStage).map { DayKey(date: $0.end, timeZone: timeZone) }).count

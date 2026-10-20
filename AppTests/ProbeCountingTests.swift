@@ -16,6 +16,26 @@ private func iso(_ s: String) -> Date { ISO8601DateFormatter().date(from: s)! }
     #expect(ProbeCounting.nightsWithStages(records, timeZone: paris) == 2)
 }
 
+@Test func nightCrossingMidnightCountsOnce() {
+    let records = [
+        ProbeSleepRecord(end: iso("2026-10-18T21:30:00Z"), hasStage: true),   // 23:30 in Paris, night of 10/19
+        ProbeSleepRecord(end: iso("2026-10-19T05:10:00Z"), hasStage: true),   // 07:10 in Paris, same night
+        ProbeSleepRecord(end: iso("2026-10-19T12:00:00Z"), hasStage: true),   // 14:00 in Paris, still 10/19
+    ]
+    #expect(ProbeCounting.nightsWithStages(records, timeZone: paris) == 1)
+}
+
+@Test func effortTestPicksLatestWorkOutDoorsWorkoutWithoutExistingEffort() {
+    let rated = UUID(), unrated = UUID(), other = UUID()
+    let candidates = [   // most recent first
+        ProbeWorkoutCandidate(id: other, bundleID: "com.z.healthfit", name: "HealthFit", hasEffort: false),
+        ProbeWorkoutCandidate(id: rated, bundleID: "com.x.wod", name: "WorkOutDoors", hasEffort: true),
+        ProbeWorkoutCandidate(id: unrated, bundleID: "com.x.wod", name: "WorkOutDoors", hasEffort: false),
+    ]
+    #expect(ProbeCounting.workoutForEffortTest(candidates) == unrated)
+    #expect(ProbeCounting.workoutForEffortTest(Array(candidates.prefix(2))) == nil)
+}
+
 @Test func groupsWorkoutsBySourceSortedByCount() {
     let result = ProbeCounting.workoutsBySource([
         ("com.example.healthfit", "HealthFit"), ("com.example.wod", "WorkOutDoors"),
