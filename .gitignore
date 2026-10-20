@@ -1,0 +1,9 @@
+.build/
+build/
+*.xcodeproj/
+DerivedData/
+App/Info.plist
+App/Readiness.entitlements
+.DS_Store
+*.ipa
+.superpowers/
