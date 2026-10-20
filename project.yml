@@ -1,0 +1,53 @@
+name: Readiness
+options:
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    BUNDLE_ID: fr.perso.formedujour
+    APP_GROUP_ID: group.$(BUNDLE_ID)
+packages:
+  ReadinessEngine:
+    path: Packages/ReadinessEngine
+targets:
+  Readiness:
+    type: application
+    platform: iOS
+    sources: [App]
+    dependencies:
+      - package: ReadinessEngine
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(BUNDLE_ID)
+        TARGETED_DEVICE_FAMILY: "1"
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: Forme du jour
+        CFBundleShortVersionString: "0.0.1"
+        CFBundleVersion: "1"
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        AppGroupIdentifier: $(APP_GROUP_ID)
+        NSHealthUpdateUsageDescription: "Forme du jour peut enregistrer l'effort ressenti que tu saisis pour une séance. Rien ne quitte ton iPhone."
+    entitlements:
+      path: App/Readiness.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+        com.apple.developer.healthkit.access: []
+        com.apple.security.application-groups: [$(APP_GROUP_ID)]
+  ReadinessTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [AppTests]
+    dependencies:
+      - target: Readiness
+schemes:
+  Readiness:
+    build:
+      targets:
+        Readiness: all
+    test:
+      targets: [ReadinessTests]

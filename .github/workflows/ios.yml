@@ -1,0 +1,30 @@
+name: iOS
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - run: xcodebuild -version
+      - run: brew install xcodegen
+      - run: xcodegen generate
+      - run: bash scripts/check-no-network.sh
+      - name: Test
+        run: |
+          set -o pipefail
+          xcodebuild test -project Readiness.xcodeproj -scheme Readiness \
+            -destination "$(bash scripts/sim-destination.sh)" \
+            -resultBundlePath build/Tests.xcresult \
+            CODE_SIGNING_ALLOWED=NO
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcresult
+          path: build/Tests.xcresult
